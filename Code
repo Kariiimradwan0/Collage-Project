@@ -1,0 +1,311 @@
+
+//Navigation Target
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+using UnityEngine.AI;
+using UnityEngine.UI;
+public class SetNavigationTarget : MonoBehaviour
+{
+[SerializeField]
+private TMP_Dropdown navigationTargetDropDown;
+[SerializeField]
+private List<Target> navigationTargetObjects = new List<Target>();
+[SerializeField]
+private Slider navigationYOffset;
+private NavMeshPath path;
+private LineRenderer line;
+
+private Vector3 targetPosition = Vector3.zero;
+private int currentFloor = 1;
+private bool lineToggle = false;
+private void Start()
+{
+path = new NavMeshPath();
+line = transform.GetComponent<LineRenderer>();
+line.enabled = lineToggle;
+}
+private void Update()
+{
+if (lineToggle && targetPosition != Vector3.zero)
+{
+NavMesh.CalculatePath(transform.position, targetPosition, NavMesh.AllAreas, path);
+line.positionCount = path.corners.Length;
+Vector3[] calculatedPathAndOffset = AddLineOffset();
+line.SetPositions(calculatedPathAndOffset);
+}
+}
+public void SetCurrentNavigationTarget(int selectedValue)
+{
+targetPosition = Vector3.zero;
+string selectedText = navigationTargetDropDown.options[selectedValue].text;
+Target currentTarget = navigationTargetObjects.Find(x => x.Name.Equals(selectedText));
+if (currentTarget != null)
+{
+if (!line.enabled)
+{
+ToggleVisibility();
+}
+targetPosition = currentTarget.PositionObject.transform.position;
+
+}
+}
+public void ToggleVisibility()
+{
+lineToggle = !lineToggle;
+line.enabled = lineToggle;
+}
+public void ChangeActiveFloor(int floorNumber)
+{
+currentFloor = floorNumber;
+SetNavigationTargetDropDownOptions(currentFloor);
+}
+private Vector3[] AddLineOffset()
+{
+if (navigationYOffset.value == 0)
+{
+return path.corners;
+}
+Vector3[] calculatedLine = new Vector3[path.corners.Length];
+for (int i = 0; i < path.corners.Length; i++)
+{
+calculatedLine[i] = path.corners[i] + new Vector3(0, navigationYOffset.value, 0);
+}
+return calculatedLine;
+}
+private void SetNavigationTargetDropDownOptions(int floorNumber)
+{
+navigationTargetDropDown.ClearOptions();
+navigationTargetDropDown.value = 0;
+floorNumber = currentFloor;
+if (line.enabled)
+
+{
+ToggleVisibility();
+}
+if (floorNumber == 1)
+{
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("Ground Floor"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("101"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("102"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("103"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("104"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("105"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("106"));
+}
+if (floorNumber == 2)
+{
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("First Floor"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("The Library"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("The Prayer Room"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("Bioinformatics Lab"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("Computer Skills Unit"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("109"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("111"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("Oracle Database Lab"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("Robots Club"));
+}
+if (floorNumber == 3)
+{
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("Second Floor"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("The Vice Dean"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("IT Department"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("Printing Management"));
+[48]
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("The Dean"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("Dean's Office Manager"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("Administration
+Manager"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("IS Department"));
+navigationTargetDropDown.options.Add(new TMP_Dropdown.OptionData("CS Department"));
+}
+}
+}
+//QR Code Recenter
+using System.Collections.Generic;
+using Unity.Collections;
+using Unity.XR.CoreUtils;
+using UnityEngine;
+using UnityEngine.XR.ARFoundation;
+using UnityEngine.XR.ARSubsystems;
+using ZXing;
+public class QrCodeRecenter : MonoBehaviour
+{
+[SerializeField]
+private ARSession session;
+[SerializeField]
+private XROrigin sessionOrigin;
+[SerializeField]
+private ARCameraManager cameraManager;
+[SerializeField]
+private List<Target> navigationTargetObjects = new List<Target>();
+private Texture2D cameraImageTexture;
+private IBarcodeReader reader = new BarcodeReader(); // create a barcode reader instance
+
+private void Update()
+{
+if (Input.GetKeyDown(KeyCode.Space))
+{
+SetQrCodeRecenterTarget("101");
+}
+}
+private void OnEnable()
+{
+cameraManager.frameReceived += OnCameraFrameReceived;
+}
+private void OnDisable()
+{
+cameraManager.frameReceived -= OnCameraFrameReceived;
+}
+private void OnCameraFrameReceived(ARCameraFrameEventArgs eventArgs)
+{
+if (!cameraManager.TryAcquireLatestCpuImage(out XRCpuImage image))
+{
+return;
+}
+var conversionParams = new XRCpuImage.ConversionParams
+{
+inputRect = new RectInt(0, 0, image.width, image.height),
+outputDimensions = new Vector2Int(image.width / 2, image.height / 2),
+outputFormat = TextureFormat.RGBA32,
+transformation = XRCpuImage.Transformation.MirrorY
+};
+int size = image.GetConvertedDataSize(conversionParams);
+var buffer = new NativeArray<byte>(size, Allocator.Temp);
+image.Convert(conversionParams, buffer);
+[50]
+image.Dispose();
+cameraImageTexture = new Texture2D(
+conversionParams.outputDimensions.x,
+conversionParams.outputDimensions.y,
+conversionParams.outputFormat,
+false);
+cameraImageTexture.LoadRawTextureData(buffer);
+cameraImageTexture.Apply();
+buffer.Dispose();
+var result = reader.Decode(cameraImageTexture.GetPixels32(), cameraImageTexture.width,
+cameraImageTexture.height);
+if (result != null)
+{
+SetQrCodeRecenterTarget(result.Text);
+}
+}
+private void SetQrCodeRecenterTarget(string targetText)
+{
+Target currentTarget = navigationTargetObjects.Find(x =>
+x.Name.ToLower().Equals(targetText.ToLower()));
+if (currentTarget != null)
+{
+session.Reset();
+sessionOrigin.transform.position = currentTarget.PositionObject.transform.position;
+sessionOrigin.transform.rotation = currentTarget.PositionObject.transform.rotation;
+}
+}
+public void ChangeActiveFloor(string floorEntrance)
+{
+SetQrCodeRecenterTarget(floorEntrance);
+}
+}
+[51]
+//Navigation Controller
+using UnityEngine;
+using UnityEngine.AI;
+public class NavigationController : MonoBehaviour {
+public Vector3 TargetPosition { get; set; } = Vector3.zero;
+public NavMeshPath CalculatedPath { get; private set; }
+private void Start() {
+CalculatedPath = new NavMeshPath();
+}
+private void Update() {
+if (TargetPosition != Vector3.zero) {
+NavMesh.CalculatePath(transform.position, TargetPosition, NavMesh.AllAreas, CalculatedPath);
+}
+}
+}
+//Get Image Alternative
+using TMPro;
+using UnityEngine;
+using UnityEngine.XR.ARFoundation;
+using ZXing;
+public class GetImageAlternative : MonoBehaviour
+{
+[SerializeField]
+private ARCameraBackground arCameraBackground;
+[SerializeField]
+private RenderTexture targetRenderTexture;
+[SerializeField]
+private TextMeshProUGUI qrCodeText;
+
+private Texture2D cameraImageTexture;
+private IBarcodeReader reader = new BarcodeReader();
+private void Update()
+{
+Graphics.Blit(null, targetRenderTexture, arCameraBackground.material);
+cameraImageTexture = new Texture2D(targetRenderTexture.width, targetRenderTexture.height,
+TextureFormat.RGBA32, false);
+Graphics.CopyTexture(targetRenderTexture, cameraImageTexture);
+var result = reader.Decode(cameraImageTexture.GetPixels32(), cameraImageTexture.width,
+cameraImageTexture.height);
+if (result != null)
+{
+qrCodeText.text = result.Text;
+}
+}
+}
+//Enable Disable Map button
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+public class EnableDisable0 : MonoBehaviour
+{
+public GameObject Rawimage;
+public bool isEnabled = true;
+public void ButtonClicked0()
+{
+isEnabled = !isEnabled;
+Rawimage.SetActive(isEnabled);
+}
+}
+//Enable Disable Floor button
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+public class EnableDisable1 : MonoBehaviour
+{
+public GameObject FloorOptionPanel;
+public bool isEnabled = true;
+public void ButtonClicked()
+{
+isEnabled = !isEnabled;
+FloorOptionPanel.SetActive(isEnabled);
+}
+}
+5.7.7 Target script
+using System;
+using UnityEngine;
+[Serializable]
+public class Target
+{
+public string Name;
+public GameObject PositionObject;
+public int FloorNumber;
+public Vector3 Position;
+public Vector3 Rotation;
+}
+
+// SetUiText script
+using TMPro;
+using UnityEngine;
+public class SetUiText : MonoBehaviour
+{
+[SerializeField]
+private TMP_Text textField;
+[SerializeField]
+private string fixedText;
+public void OnSliderValueChanged(float numericValue)
+{
+textField.text = $"{fixedText}: {numericValue}";
+}
+}
